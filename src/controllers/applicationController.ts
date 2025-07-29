@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import Application from '../models/Application';
 import Job from '../models/Job';
+import Chat from '../models/Chat';
 import { AuthRequest } from '../middleware/auth';
 
 // Apply for a job
@@ -49,15 +50,34 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
             status: 'pending'
         });
 
-        await application.save();
+        const savedApplication = await application.save();
+
+        // Create a chat between the applicant and the company
+        const newChat = new Chat({
+            applicationId: savedApplication._id,
+            userId: userId,
+            companyId: job.company,
+            jobId: jobId,
+            messages: [{
+                sender: job.company,
+                content: `Thank you for applying for ${job.title}. Our team will be in touch and you will be notified via this chat.`,
+                timestamp: new Date(),
+                isRead: false
+            }]
+        });
+
+        await newChat.save();
 
         res.status(201).json({
-            message: ' Application submitted successfully.',
+            message: 'Application submitted successfully.',
             application: {
                 id: application._id,
                 jobId: application.job,
                 status: application.status,
                 appliedAt: application.appliedAt
+            },
+            chat: {
+                id: newChat._id
             }
         });
     } catch (error) {
