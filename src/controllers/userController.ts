@@ -257,7 +257,7 @@ export const addExperience = async (req: AuthRequest, res: Response) => {
 
         res.json({
             message: 'Experience added successfully',
-            experience: newExperience   
+            experience: newExperience
         });
     } catch (error) {
         console.error('Add experience error:', error);
@@ -311,6 +311,37 @@ export const addEducation = async (req: AuthRequest, res: Response) => {
         console.error('Add education error:', error);
         res.status(500).json({
             message: 'Server error while adding education',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Get the current user's profile
+export const getCurrentUser = async (req: AuthRequest, res: Response) => {
+    try {
+        // Check if user is authenticated
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        // Find the user by ID and exclude password
+        const user = await User.findById(req.user.id)
+            .select('-password')
+            .populate('experience')
+            .populate('education');
+
+        if (!user) {
+            // Add debugging log
+            console.error(`User not found with ID: ${req.user.id}`);
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Return the user data
+        res.json(user);
+    } catch (error) {
+        console.error('Get current user error:', error);
+        res.status(500).json({
+            message: 'Server error while fetching user profile',
             error: error instanceof Error ? error.message : String(error)
         });
     }

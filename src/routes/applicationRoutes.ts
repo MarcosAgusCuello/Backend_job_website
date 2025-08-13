@@ -5,8 +5,8 @@ import { auth, authUser, authCompany } from '../middleware/auth';
 const router = express.Router();
 
 // User routes
-router.post('/apply', authUser, applicationController.applyForJob);
 router.get('/user/applications', authUser, applicationController.getUserApplications);
+router.post('/apply', authUser, applicationController.applyForJob);
 router.delete('/withdraw/:applicationId', authUser, applicationController.withdrawApplication);
 
 // Company routes

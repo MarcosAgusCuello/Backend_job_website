@@ -79,9 +79,9 @@ export const getJobApplications = async (req: AuthRequest, res: Response) => {
         const { jobId } = req.params;
 
         // Verify the job exists and belongs to the company
-        const job = await Job.findById({
+        const job = await Job.findOne({
             _id: jobId,
-            company: req.company._id
+            company: req.company.id  // Use id instead of _id
         });
 
         if (!job) {
@@ -95,6 +95,7 @@ export const getJobApplications = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        // Pagination
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
         const skip = (page - 1) * limit;
@@ -192,7 +193,7 @@ export const getUserApplications = async (req: AuthRequest, res: Response) => {
         const skip = (page - 1) * limit;
 
         // Filter by status if provided
-        const filter: any = { user: req.user._id };
+        const filter: any = { user: req.user.id };
         if (req.query.status && ['pending', 'reviewed', 'interviewing', 'rejected', 'accepted'].includes(req.query.status as string)) {
             filter.status = req.query.status;
         }
@@ -204,7 +205,7 @@ export const getUserApplications = async (req: AuthRequest, res: Response) => {
                 select: 'title company type location',
                 populate: {
                     path: 'company',
-                    select: 'comapnyName logo'
+                    select: 'comapanyName logo'
                 }
             })
             .sort({ appliedAt: -1 })
@@ -238,7 +239,7 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
         // Find the application and make sure it belongs to this user
         const application = await Application.findOne({
             _id: applicationId,
-            user: req.user._id
+            user: req.user.id
         });
 
         if (!application) {

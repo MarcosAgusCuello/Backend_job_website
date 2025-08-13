@@ -47,7 +47,7 @@ export const register = async (req: Request, res: Response) => {
         );
 
         res.status(201).json({
-            message: 'Company registered successfully', // Fixed typo: messsage -> message
+            message: 'Company registered successfully',
             token,
             company: {
                 id: company._id,

@@ -9,6 +9,7 @@ router.post('/register', userController.register);
 router.post('/login', userController.login);
 
 // Protected routes (require authentication)
+router.get('/me', authUser, userController.getCurrentUser);
 router.put('/profile', authUser, userController.updateUser);
 router.delete('/', authUser, userController.deleteUser);
 router.post('/experience', authUser, userController.addExperience);
