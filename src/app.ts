@@ -7,6 +7,7 @@ import userRoutes from './routes/userRoutes';
 import jobRoutes from './routes/jobRoutes';
 import applicationRoutes from './routes/applicationRoutes';
 import companyRoutes from './routes/companyRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/chats', chatRoutes);
 //example
 app.get("/", (_req, res) => {
   res.send("Job Board Backend API is running!");
