@@ -15,4 +15,8 @@ router.delete('/', authUser, userController.deleteUser);
 router.post('/experience', authUser, userController.addExperience);
 router.post('/education', authUser, userController.addEducation);
 
+// Skills routes
+router.post('/skills', authUser, userController.addSkills);
+router.delete('/skills/:skill', authUser, userController.removeSkill);
+
 export default router;

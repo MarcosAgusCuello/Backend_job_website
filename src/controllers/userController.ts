@@ -1,4 +1,4 @@
-import e, { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
@@ -315,6 +315,116 @@ export const addEducation = async (req: AuthRequest, res: Response) => {
         });
     }
 };
+
+// Add skills to users profiles
+export const addSkills = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const { skills } = req.body;
+
+        // Validate input
+        if (!skills || !Array.isArray(skills) || skills.length === 0) {
+            return res.status(400).json({ message: 'Please provide a skill' });
+        }
+
+        // Clean and Validate each skill
+        const cleanedSkills = skills
+            .map(skill => skill.trim())
+            .filter(skill => skill.length > 0 && skill.length <= 30); // Max length 30 chars
+
+        if (cleanedSkills.length === 0) {
+            return res.status(400).json({ message: 'No valid skills provided' });
+        }
+
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Initialize skills
+        if (!user.skills) {
+            user.skills = [];
+        }
+
+        // Add new skills avoiding duplicates
+        const uniqueSkills = new Set(...user.skills, ...cleanedSkills);
+        user.skills = Array.from(uniqueSkills);
+
+        await user.save();
+
+        // Return updated skills
+        const updatedUser = await User.findById(req.user.id)
+            .select('-password')
+            .populate('experience')
+            .populate('education');
+
+        res.json({ updatedUser });
+    } catch (error) {
+        console.error('Add skills error:', error);
+        res.status(500).json({
+            message: 'Server error while adding skills',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Remove a skill from user profile
+export const removeSkill = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const { skill } = req.params;
+
+        if (!skill) {
+            return res.status(400).json({ message: 'Skill parameter is required' });
+        }
+
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // If user has no skills, nothing to remove
+        if (!user.skills || user.skills.length === 0) {
+            return res.status(400).json({ message: 'User has no skills to remove' });
+        }
+
+        // Remove the skill if it exists
+        const decodedSkill = decodeURIComponent(skill);
+        const initialLength = user.skills.length;
+        user.skills = user.skills.filter(s => s !== decodedSkill);
+
+        // Check if any skill was removed
+        if (user.skills.length === initialLength) {
+            return res.status(404).json({ message: 'Skill not found in user profile' });
+        }
+
+        await user.save();
+
+        // Return updated user without password
+        const updatedUser = await User.findById(req.user.id)
+            .select('-password')
+            .populate('experience')
+            .populate('education');
+
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Remove skill error:', error);
+        res.status(500).json({
+            message: 'Server error while removing skill',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+}
 
 // Get the current user's profile
 export const getCurrentUser = async (req: AuthRequest, res: Response) => {
