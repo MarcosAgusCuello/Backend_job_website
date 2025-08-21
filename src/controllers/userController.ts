@@ -456,3 +456,163 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         });
     }
 };
+
+// Upload CV
+export const uploadCV = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Validate file type
+        if (req.file.mimetype !== 'application/pdf') {
+            return res.status(400).json({ message: 'Only PDF files are allowed' });
+        }
+        
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update user CV
+        user.cv = {
+            data: req.file.buffer,
+            originalName: req.file.originalname,
+            uploadDate: new Date(),
+            size: req.file.size
+        }
+
+        await user.save();
+
+        // Return CV info
+        res.json({
+            message: 'CV uploaded successfully',
+            cv: {
+                originalName: user.cv.originalName,
+                uploadDate: user.cv.uploadDate,
+                size: user.cv.size
+            }
+        });
+    } catch (error) {
+        console.error('Upload CV error:', error);
+        res.status(500).json({
+            message: 'Server error while uploading CV',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Delete CV
+export const deleteCV = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // If user has no CV
+        if (!user.cv ) {
+            return res.status(400).json({ message: 'User has no CV to delete' });
+        }
+
+        // Remove CV from user Document
+        user.cv = undefined;
+        await user.save();
+
+        res.json({
+            message: 'CV deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete CV error:', error);
+        return res.status(500).json({
+            message: 'Server error while deleting CV',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Get CV information (metadata only)
+export const getCVInfo = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // If user has no cv
+        if (!user.cv) {
+            return res.status(404).json({ message: 'User has no CV' });
+        }
+
+        // Return CV info
+        res.json({
+            cv: {
+                originalName: user.cv.originalName,
+                uploadDate: user.cv.uploadDate,
+                size: user.cv.size
+            }
+        });
+    } catch (error) {
+        console.error('Get CV info error:', error);
+        res.status(500).json({ 
+            message: 'Server error while fetching CV info',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Download CV (PDF file)
+export const downloadCV = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        // Find the user
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // If user has no CV
+        if (!user.cv || !user.cv.data) {
+            return res.status(404).json({ message: 'User has no CV to download' });
+        }
+
+        // Set appropiate headers for PDF download
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${user.cv.originalName}"`,
+            'Content-Length': user.cv.size
+        });
+
+        // Send the PDF Data
+        res.send(user.cv.data);
+    } catch (error) {
+        console.error('Download CV error:', error);
+        res.status(500).json({
+            message: 'Server error while downloading CV',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+

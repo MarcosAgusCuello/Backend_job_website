@@ -26,6 +26,12 @@ export interface IUser extends mongoose.Document {
         current?: boolean;
     }[];
     resume?: string; // URL to resume file
+    cv?: {
+        data: Buffer;
+        originalName: string;
+        uploadDate: Date;
+        size: number;
+    };
     profileImage?: string; // URL to profile image
     createdAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -102,6 +108,15 @@ const UserSchema = new mongoose.Schema<IUser>({
         }
     ],
     resume: String,
+    cv: {
+        data: Buffer,
+        originalName: String,
+        uploadDate: {
+            type: Date,
+            default: Date.now
+        },
+        size: Number
+    },
     profileImage: String,
     createdAt: {
         type: Date,
