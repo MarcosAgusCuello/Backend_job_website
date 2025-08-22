@@ -413,3 +413,74 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
         });
     }
 };
+
+export const createChatForApplication = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user && !req.company) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const { applicationId } = req.params;
+
+        // Find the application
+        const application = await Application.findById(applicationId)
+            .populate({
+                path: 'job',
+                populate: {
+                    path: 'company'
+                }
+            });
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Verify permissions
+        const job = application.job as any;
+        const isUser = req.user && application.user.toString() === req.user.id;
+        const isCompany = req.company && job.company._id.toString() === req.company.id;
+
+        if (!isUser && !isCompany) {
+            return res.status(403).json({ message: 'You do not have permission to create a chat for this application' });
+        }
+
+        // Check if chat already exists
+        const existingChat = await Chat.findOne({ applicationId });
+        if (existingChat) {
+            return res.status(200).json({
+                message: 'Chat already exists',
+                chatId: existingChat._id
+            });
+        }
+
+        // Create new chat
+        const chat = new Chat({
+            applicationId,
+            userId: application.user,
+            companyId: job.company._id,
+            jobId: job._id,
+            messages: [{
+                sender: req.company ? req.company.id : application.user,
+                content: req.company
+                    ? `Thank you for applying for the position of ${job.title}. Our team will be in touch.`
+                    : `I'm interested in discussing this opportunity further.`,
+                timestamp: new Date(),
+                isRead: false
+            }]
+        });
+
+        await chat.save();
+
+        res.status(201).json({
+            message: 'Chat created successfully',
+            chatId: chat._id
+        });
+
+    } catch (error) {
+        console.error('Error creating chat:', error);
+        res.status(500).json({
+            message: 'Server error while creating chat',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};

@@ -1,28 +1,22 @@
 import express from 'express';
-import {
-  getUserChats,
-  getCompanyChats,
-  getChatById,
-  sendMessage,
-  markMessagesAsRead
-} from '../controllers/chatController';
+import * as chatController from '../controllers/chatController';
+import * as applicationController from '../controllers/applicationController';
 import { auth, authUser, authCompany } from '../middleware/auth';
 
 const router = express.Router();
 
-// Get all chats for a user - should only be accessible by that user
-router.get('/user/:userId', authUser, getUserChats);
+// Application-specific routes first
+router.post('/application/:applicationId', auth, applicationController.createChatForApplication);
 
-// Get all chats for a company - should only be accessible by that company
-router.get('/company/:companyId', authCompany, getCompanyChats);
+// Get all chats
+router.get('/', auth, chatController.getChats);
+router.get('/user', authUser, chatController.getChats);
+router.get('/company', authCompany, chatController.getChats);
 
-// Get a specific chat - both users and companies should be able to access their own chats
-router.get('/:chatId', auth, getChatById);
-
-// Send a message in a chat - both users and companies should be able to send messages
-router.post('/:chatId/message', auth, sendMessage);
-
-// Mark messages as read - both users and companies should be able to mark messages as read
-router.patch('/:chatId/read', auth, markMessagesAsRead);
+// Chat-specific operations
+router.get('/:chatId', auth, chatController.getChatById);
+router.get('/:chatId/company', authCompany, chatController.getChatById);
+router.post('/:chatId/messages', auth, chatController.sendMessage);
+router.put('/:chatId/read', auth, chatController.markChatAsRead);
 
 export default router;
