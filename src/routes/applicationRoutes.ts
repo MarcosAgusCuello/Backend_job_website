@@ -4,13 +4,18 @@ import { auth, authUser, authCompany } from '../middleware/auth';
 
 const router = express.Router();
 
+
+
 // User routes
 router.get('/user/applications', authUser, applicationController.getUserApplications);
+router.get('/job/:jobId', authCompany, applicationController.getJobApplications);
 router.post('/apply', authUser, applicationController.applyForJob);
 router.delete('/withdraw/:applicationId', authUser, applicationController.withdrawApplication);
+router.get('/:id', auth, applicationController.getApplicationById);
 
 // Company routes
-router.get('/job/:jobId', authCompany, applicationController.getJobApplications);
+
 router.put('/:applicationId/status', authCompany, applicationController.updateApplicationStatus);
+router.get('/:applicationId/cv', authCompany, applicationController.downloadApplicantCV);
 
 export default router;

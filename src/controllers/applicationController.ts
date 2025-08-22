@@ -128,7 +128,7 @@ export const getJobApplications = async (req: AuthRequest, res: Response) => {
 
         const totalApplications = await Application.countDocuments(filter);
         const applications = await Application.find(filter)
-            .populate('user', 'firstName lastName email location skills profileImage')
+            .populate('user', 'firstName lastName email location bio skills profileImage')
             .sort({ appliedAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -143,6 +143,132 @@ export const getJobApplications = async (req: AuthRequest, res: Response) => {
         console.error('Error fetching job applications:', error);
         res.status(500).json({
             message: 'Server error while fetching applications',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+export const getApplicationById = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user && !req.company) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const { id } = req.params;
+
+        // First, fetch the application without population to check if it exists
+        const applicationExists = await Application.findById(id);
+        if (!applicationExists) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Permission checks (as before)
+        if (req.company) {
+            const job = await Job.findById(applicationExists.job);
+            if (!job) {
+                return res.status(404).json({ message: 'Associated job not found' });
+            }
+
+            const companyId = job.company.toString();
+            const requestingCompanyId = req.company.id;
+
+            if (companyId !== requestingCompanyId) {
+                return res.status(403).json({
+                    message: 'You do not have permission to view this application'
+                });
+            }
+        } else if (req.user) {
+            if (applicationExists.user.toString() !== req.user.id) {
+                return res.status(403).json({
+                    message: 'You do not have permission to view this application'
+                });
+            }
+        }
+
+        // Now fetch with population for the full details
+        // For companies, include all relevant user profile fields
+        const userFieldsToInclude = req.company
+            ? 'firstName lastName email profileImage location bio skills experience education cv.originalName cv.uploadDate'
+            : 'firstName lastName email profileImage';
+
+        const application = await Application.findById(id)
+            .populate('user', userFieldsToInclude)
+            .populate({
+                path: 'job',
+                select: 'title company location type status',
+                populate: {
+                    path: 'company',
+                    select: 'companyName logo'
+                }
+            });
+
+        // Check if CV exists (for company view)
+        if (req.company && application && application.user) {
+            const user = application.user as any;
+            // Add a field to indicate if CV is available (without sending the actual CV data)
+            user.hasCv = !!(user.cv && (user.cv.originalName || user.cv._id));
+
+            // Don't send CV data in the response, just metadata
+            if (user.cv && user.cv.data) {
+                delete user.cv.data;
+            }
+        }
+
+        res.json(application);
+    } catch (error) {
+        console.error('Get application by ID error:', error);
+        res.status(500).json({
+            message: 'Server error while fetching application',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Download applicant CV (company only)
+export const downloadApplicantCV = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.company) {
+            return res.status(401).json({ message: 'Only companies can access applicant CVs' });
+        }
+
+        const { applicationId } = req.params;
+
+        // Find the application
+        const application = await Application.findById(applicationId)
+            .populate('user')
+            .populate('job');
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Check if the company owns this job
+        const job = application.job as any;
+        if (job.company.toString() !== req.company.id) {
+            return res.status(403).json({
+                message: 'You do not have permission to access this application'
+            });
+        }
+
+        // Get the user's CV
+        const user = application.user as any;
+        if (!user.cv || !user.cv.data) {
+            return res.status(404).json({ message: 'No CV found for this applicant' });
+        }
+
+        // Set appropriate headers for PDF download
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${user.firstName}_${user.lastName}_CV.pdf"`,
+            'Content-Length': user.cv.size || user.cv.data.length
+        });
+
+        // Send the PDF data
+        res.send(user.cv.data);
+    } catch (error) {
+        console.error('Download applicant CV error:', error);
+        res.status(500).json({
+            message: 'Server error while downloading applicant CV',
             error: error instanceof Error ? error.message : String(error)
         });
     }
@@ -225,7 +351,7 @@ export const getUserApplications = async (req: AuthRequest, res: Response) => {
                 select: 'title company type location',
                 populate: {
                     path: 'company',
-                    select: 'comapanyName logo'
+                    select: 'companyName logo'
                 }
             })
             .sort({ appliedAt: -1 })
