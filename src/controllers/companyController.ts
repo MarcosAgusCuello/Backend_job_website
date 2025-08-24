@@ -140,3 +140,25 @@ export const getCompanyWithJobs = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getCompanyProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.company) {
+            return res.status(401).json({ message: 'Not authorized as a company' });
+        }
+
+        const company = await Company.findById(req.company.id).select('-password');
+        
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        res.status(200).json(company);
+    } catch (error) {
+        console.error('Error getting company profile:', error);
+        res.status(500).json({ 
+            message: 'Server error getting company profile',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
