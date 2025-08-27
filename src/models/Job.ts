@@ -6,7 +6,7 @@ export interface IJob extends mongoose.Document {
   location?: string;
   description: string;
   requirements: string[];
-  type: 'full-time' | 'part-time' | 'contract' | 'internship' | 'Remote';
+  type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship' | 'Remote' | 'Freelance';
   salary?: {
     min: number;
     max: number;
@@ -47,7 +47,7 @@ const JobSchema = new mongoose.Schema<IJob>({
   type: {
     type: String,
     required: true,
-    enum: ['Full-Time', 'Part-Time', 'Contract', 'Internship', 'Remote']
+    enum: ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote', 'Freelance']
   },
   salary: {
     min: Number,
