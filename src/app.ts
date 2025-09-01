@@ -8,12 +8,14 @@ import jobRoutes from './routes/jobRoutes';
 import applicationRoutes from './routes/applicationRoutes';
 import companyRoutes from './routes/companyRoutes';
 import chatRoutes from './routes/chatRoutes';
+import { performanceLogger } from './middleware/performance';
 
 dotenv.config();
 
 export const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(performanceLogger);
 
 // TODO: Add router here
 app.use('/api/auth', authRoutes);

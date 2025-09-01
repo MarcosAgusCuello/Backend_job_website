@@ -6,7 +6,6 @@ import { AuthRequest } from '../middleware/auth';
 // Register a new user
 export const register = async (req: Request, res: Response) => {
     try {
-        console.log("User registration request body:", req.body);
 
         const { firstName, lastName, email, password, location, bio, skills } = req.body;
 

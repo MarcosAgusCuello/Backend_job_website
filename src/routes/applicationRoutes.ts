@@ -17,5 +17,7 @@ router.get('/:id', auth, applicationController.getApplicationById);
 
 router.put('/:applicationId/status', authCompany, applicationController.updateApplicationStatus);
 router.get('/:applicationId/cv', authCompany, applicationController.downloadApplicantCV);
+router.get('/stats/company', authCompany, applicationController.getCompanyApplicationsStats);
+router.get('/stats/job/:jobId', authCompany, applicationController.getJobApplicationsStats);
 
 export default router;

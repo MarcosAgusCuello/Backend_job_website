@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/app.js",
     "test": "jest",
-    "test:custom": "ts-node src/testRunner.ts"
+    "test:custom": "ts-node src/testRunner.ts",
+    "stress-test": "k6 run src/stress-test.js"
   },
   "keywords": [],
   "author": "",

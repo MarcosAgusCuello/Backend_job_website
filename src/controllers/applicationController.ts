@@ -101,7 +101,7 @@ export const getJobApplications = async (req: AuthRequest, res: Response) => {
         // Verify the job exists and belongs to the company
         const job = await Job.findOne({
             _id: jobId,
-            company: req.company.id  // Use id instead of _id
+            company: req.company.id
         });
 
         if (!job) {
@@ -480,6 +480,74 @@ export const createChatForApplication = async (req: AuthRequest, res: Response) 
         console.error('Error creating chat:', error);
         res.status(500).json({
             message: 'Server error while creating chat',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Get total applications count for all jobs of a company (company only)
+export const getCompanyApplicationsStats = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.company) {
+            return res.status(401).json({ message: 'Only companies can access this resource' });
+        }
+
+        // Use the company ID from the authenticated company
+        const companyId = req.company.id;
+
+        // Get all jobs from this company
+        const companyJobs = await Job.find({ company: companyId });
+        const jobIds = companyJobs.map(job => job._id);
+
+        // Get total application count
+        const totalApplications = await Application.countDocuments({ job: { $in: jobIds } });
+
+        res.status(200).json({
+            totalApplications
+        });
+    } catch (error) {
+        console.error('Error fetching company application stats:', error);
+        res.status(500).json({
+            message: 'Server error while fetching application stats',
+            error: error instanceof Error ? error.message : String(error)
+        });
+    }
+};
+
+// Get detailed stats for a specific job
+export const getJobApplicationsStats = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.company) {
+            return res.status(401).json({ message: 'Only companies can access this resource' });
+        }
+
+        const companyId = req.company.id;
+        const jobId = req.params.jobId;
+
+        // Verify the job exists and belongs to the company
+        const job = await Job.findOne({
+            _id: jobId,
+            company: companyId
+        });
+
+        if (!job) {
+            return res.status(404).json({ 
+                message: 'Job not found or you do not have permission to access this job' 
+            });
+        }
+
+        // Get total application count for this job
+        const totalApplications = await Application.countDocuments({ job: jobId });
+
+        // Return only the total applications count
+        res.status(200).json({
+            totalApplications
+        });
+
+    } catch (error) {
+        console.error('Error getting job applications stats:', error);
+        res.status(500).json({
+            message: 'Server error while fetching job application statistics',
             error: error instanceof Error ? error.message : String(error)
         });
     }
