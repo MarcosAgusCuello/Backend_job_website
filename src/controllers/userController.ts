@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import mongoose from 'mongoose';
 
 // Register a new user
 export const register = async (req: Request, res: Response) => {
@@ -200,18 +201,50 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
         }
 
         const userId = req.user.id;
+        console.log(`Attempting to delete user with ID: ${userId}`);
 
+        // Step 1: Import models
+        const Application = mongoose.model('Application');
+        const Chat = mongoose.model('Chat');
+
+        // Step 2: Delete applications (without transactions)
+        try {
+            const deleteApplicationsResult = await Application.deleteMany({ user: userId });
+            console.log(`Deleted ${deleteApplicationsResult.deletedCount} applications`);
+        } catch (appError) {
+            console.error('Error deleting applications:', appError);
+            // Continue with the process even if this fails
+        }
+
+        // Step 3: Delete chats (without transactions)
+        try {
+            // This assumes your Chat model has a userId field
+            // Modify the query according to your actual Chat schema
+            const deleteChatsResult = await Chat.deleteMany({
+                $or: [
+                    { userId: userId },
+                    { 'messages.sender': userId }
+                ]
+            });
+            console.log(`Deleted ${deleteChatsResult.deletedCount} chats`);
+        } catch (chatError) {
+            console.error('Error deleting chats:', chatError);
+            // Continue with the process even if this fails
+        }
+
+        // Step 4: Delete the user
         const deletedUser = await User.findByIdAndDelete(userId);
 
         if (!deletedUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.json({
-            message: 'User deleted sucessfully'
-        });
+        return res.json({ message: 'User account deleted successfully' });
     } catch (error) {
         console.error('Delete user error:', error);
+        if (error instanceof Error) {
+            console.error('Stack trace:', error.stack);
+        }
         res.status(500).json({
             message: 'Server error during user deletion',
             error: error instanceof Error ? error.message : String(error)
@@ -351,7 +384,7 @@ export const addSkills = async (req: AuthRequest, res: Response) => {
         }
 
         // Add new skills avoiding duplicates
-        const uniqueSkills = new Set(...user.skills, ...cleanedSkills);
+        const uniqueSkills = new Set([...user.skills, ...cleanedSkills]);
         user.skills = Array.from(uniqueSkills);
 
         await user.save();
@@ -471,7 +504,7 @@ export const uploadCV = async (req: AuthRequest, res: Response) => {
         if (req.file.mimetype !== 'application/pdf') {
             return res.status(400).json({ message: 'Only PDF files are allowed' });
         }
-        
+
         // Find the user
         const user = await User.findById(req.user.id);
 
@@ -522,7 +555,7 @@ export const deleteCV = async (req: AuthRequest, res: Response) => {
         }
 
         // If user has no CV
-        if (!user.cv ) {
+        if (!user.cv) {
             return res.status(400).json({ message: 'User has no CV to delete' });
         }
 
@@ -571,7 +604,7 @@ export const getCVInfo = async (req: AuthRequest, res: Response) => {
         });
     } catch (error) {
         console.error('Get CV info error:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: 'Server error while fetching CV info',
             error: error instanceof Error ? error.message : String(error)
         });

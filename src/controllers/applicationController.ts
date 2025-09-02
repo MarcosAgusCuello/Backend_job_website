@@ -382,29 +382,57 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
 
         const { applicationId } = req.params;
 
-        // Find the application and make sure it belongs to this user
-        const application = await Application.findOne({
-            _id: applicationId,
-            user: req.user.id
-        });
+        // Start a MongoDB session for transaction
+        const session = await Application.startSession();
+        session.startTransaction();
 
-        if (!application) {
-            return res.status(404).json({ message: 'Application not found' });
-        }
+        try {
+            // Find the application and make sure it belongs to this user
+            const application = await Application.findOne({
+                _id: applicationId,
+                user: req.user.id
+            }).session(session);
 
-        // Only allow withdrawl if the application is still pending or being reviewed
-        if (!['pending', 'reviewed'].includes(application.status)) {
-            return res.status(400).json({
-                message: `Cannot withdraw application with status "${application.status}"`,
-                currentStatus: application.status
+            if (!application) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: 'Application not found' });
+            }
+
+            // Only allow withdrawal if the application is still pending or being reviewed
+            if (!['pending', 'reviewed'].includes(application.status)) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({
+                    message: `Cannot withdraw application with status "${application.status}"`,
+                    currentStatus: application.status
+                });
+            }
+
+            // Find and delete the chat associated with this application
+            const chat = await Chat.findOne({ applicationId }).session(session);
+
+            if (chat) {
+                // Delete the chat
+                await Chat.findByIdAndDelete(chat._id).session(session);
+            }
+
+            // Delete the application
+            await Application.findByIdAndDelete(applicationId).session(session);
+
+            // Commit the transaction
+            await session.commitTransaction();
+            session.endSession();
+
+            res.json({
+                message: 'Application withdrawn successfully and associated chat removed',
             });
+        } catch (error) {
+            // If anything fails, abort the transaction
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
         }
-
-        await Application.findByIdAndDelete(applicationId);
-
-        res.json({
-            message: 'Application withdrawn successfully',
-        });
     } catch (error) {
         console.error('Withdraw application error:', error);
         res.status(500).json({
@@ -531,8 +559,8 @@ export const getJobApplicationsStats = async (req: AuthRequest, res: Response) =
         });
 
         if (!job) {
-            return res.status(404).json({ 
-                message: 'Job not found or you do not have permission to access this job' 
+            return res.status(404).json({
+                message: 'Job not found or you do not have permission to access this job'
             });
         }
 
