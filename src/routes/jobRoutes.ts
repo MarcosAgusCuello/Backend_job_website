@@ -8,10 +8,8 @@ const router = express.Router();
 router.get('/', jobController.getJobs);
 router.get('/search', jobController.searchJobs);
 
-// IMPORTANT: This specific route must come BEFORE the /:id route
-router.get('/company/myjobs', authCompany, jobController.getCompanyJobs);
 
-// This generic route must come AFTER all other /something routes
+router.get('/company/myjobs', authCompany, jobController.getCompanyJobs);
 router.get('/:id', jobController.getJobById);
 
 // Company-only routes (require company authentication)

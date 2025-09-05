@@ -213,13 +213,10 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
             console.log(`Deleted ${deleteApplicationsResult.deletedCount} applications`);
         } catch (appError) {
             console.error('Error deleting applications:', appError);
-            // Continue with the process even if this fails
         }
 
         // Step 3: Delete chats (without transactions)
         try {
-            // This assumes your Chat model has a userId field
-            // Modify the query according to your actual Chat schema
             const deleteChatsResult = await Chat.deleteMany({
                 $or: [
                     { userId: userId },

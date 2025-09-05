@@ -4,8 +4,6 @@ import { auth, authUser, authCompany } from '../middleware/auth';
 
 const router = express.Router();
 
-
-
 // User routes
 router.get('/user/applications', authUser, applicationController.getUserApplications);
 router.get('/job/:jobId', authCompany, applicationController.getJobApplications);
